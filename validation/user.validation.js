@@ -1,19 +1,21 @@
-export const userDataValidateSchemaBased = {
+import { checkSchema } from 'express-validator';
+export const userRegistrationValidatationSchema = checkSchema({
   password: {
     exists: { errorMessage: 'Password is required' },
     isString: { errorMessage: 'password should be string' },
-    isLength: {
-      options: {
-        min: {
-          length: 5,
-          errorMessage: 'Password should be at least 5 characters',
-        },
-        max: 128,
+    custom: {
+      options: (value) => {
+        if (value.length <= 5) {
+          throw new Error('password should be more than 5 characters');
+        } else if (value.length >= 128) {
+          throw new Error('password should be less than 128 characters');
+        } else return value;
       },
-      //   errorMessage: 'Password should be at least 5 characters',
     },
   },
   email: {
     isEmail: { errorMessage: 'Please provide valid email' },
   },
-};
+});
+
+// export const userLoginValidatationSchema = checkSchema({});

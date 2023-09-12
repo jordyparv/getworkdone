@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
-
+import bcrypt from 'bcrypt';
 // Define the user schema
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
     unique: true,
-    required: true,
+    required: false,
     trim: true,
     minlength: 5,
   },
@@ -15,21 +15,18 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
     lowercase: true,
-    validate: {
-      validator: (value) => {
-        // Simple email validation regex (you can use a more sophisticated one)
-        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-        return emailRegex.test(value);
-      },
-      message: 'Invalid email address',
-    },
   },
   password: {
     type: String,
     required: true,
-    minlength: 8,
+    minlength: 5,
+    select: false,
   },
   createAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
     type: Date,
     default: Date.now,
   },

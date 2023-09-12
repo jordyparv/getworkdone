@@ -4,14 +4,10 @@ import bcrypt from 'bcrypt';
 import { validationResult } from 'express-validator';
 import { sendMail } from '../lib/sendMail.js';
 import User from '../models/userModel.js';
-const router = express.Router();
+import generateRandomUsername from '../utils/getRandomUsername.js';
+import { jwtSecretKey } from '../config/constants.js';
 
-const secretKey = 'your-secret-key';
 const resetPasswordTokens = [];
-
-// Mock user database (replace with a real database in production)
-
-router.use(express.json());
 
 // User registration
 export const userRegistration = async (req, res) => {
@@ -20,21 +16,20 @@ export const userRegistration = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
-    const { email, username, password } = req.body;
+    const username = await generateRandomUsername();
+    const { email, password } = req.body;
     const _user = await User.findOne({ email });
     if (!!_user) {
       return res.status(400).json({ message: 'Email already exists' });
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = { email, username, password: hashedPassword };
+    const newUser = { email, username, password };
     const createdUser = await User.create(newUser);
     if (createdUser) {
       res.status(201).json({ message: 'User registered successfully' });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -45,10 +40,10 @@ export const userLogin = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    const user = User.find((user) => user.username === username);
-
+    const user = await User.findOne({ email }).select('+password');
+    console.log(user);
     if (!user) {
       return res.status(401).json({ message: 'Authentication failed' });
     }
@@ -56,12 +51,15 @@ export const userLogin = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      return res.status(401).json({ message: 'Authentication failed' });
+      return res.status(401).json({ message: 'Email or Password is invalid' });
     }
+    const _user = { ...user.toObject() };
+    delete _user.password;
+    delete _user.updatedAt;
+    const userBase64 = user.username.concat(user.email).toString('base64');
+    const token = jwt.sign({ userBase64 }, jwtSecretKey, { expiresIn: '1D' });
 
-    const token = jwt.sign({ username }, secretKey, { expiresIn: '1h' });
-
-    res.json({ token });
+    res.json({ user: _user, token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -83,7 +81,7 @@ export const userForgotPassword = (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const resetToken = jwt.sign({ email }, secretKey, { expiresIn: '1h' });
+    const resetToken = jwt.sign({ email }, jwtSecretKey, { expiresIn: '1h' });
     resetPasswordTokens.push(resetToken);
 
     sendMail(email, resetToken);

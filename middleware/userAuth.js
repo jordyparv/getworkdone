@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { jwtSecretKey } from '../config/constants';
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -7,7 +8,7 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  jwt.verify(token, secretKey, (err, user) => {
+  jwt.verify(token, jwtSecretKey, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Forbidden' });
     }

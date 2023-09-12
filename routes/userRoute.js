@@ -5,23 +5,14 @@ import {
   userForgotPassword,
   userResetPassword,
 } from '../controllers/userController.js';
-import { check, checkSchema } from 'express-validator';
-import { userDataValidateSchemaBased } from '../validation/user.validation.js';
-// import authenticateToken from '../middleware/userAuth.js';
+import { check } from 'express-validator';
+import { userRegistrationValidatationSchema } from '../validation/user.validation.js';
 
 const router = Router();
 
-router.post(
-  '/register',
-  checkSchema(userDataValidateSchemaBased),
-  userRegistration
-);
+router.post('/register', userRegistrationValidatationSchema, userRegistration);
 
-router.post(
-  '/login',
-  [check('username').trim().escape(), check('password').trim()],
-  userLogin
-);
+router.post('/login', userRegistrationValidatationSchema, userLogin);
 
 router.post(
   '/forgot-password',

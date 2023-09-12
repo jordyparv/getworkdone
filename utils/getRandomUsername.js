@@ -1,4 +1,4 @@
-function generateRandomUsername(length) {
+function generateRandomUsername(length = 8) {
   const charset =
     'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let username = '';
@@ -10,9 +10,5 @@ function generateRandomUsername(length) {
 
   return username;
 }
-
-// Usage:
-const randomUsername = generateRandomUsername(8); // Change the length as needed
-console.log(randomUsername);
 
 export default generateRandomUsername;
