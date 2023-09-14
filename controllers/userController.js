@@ -3,9 +3,12 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { validationResult } from 'express-validator';
 import { sendMail } from '../lib/sendMail.js';
-import User from '../models/userModel.js';
+
 import generateRandomUsername from '../utils/getRandomUsername.js';
-import { jwtSecretKey } from '../config/constants.js';
+
+import generateJWT from '../helpers/generateJWT.js';
+
+import { addUser, getUserByEmail, updateUserToken } from '../helpers/userFn.js';
 
 const resetPasswordTokens = [];
 
@@ -16,17 +19,28 @@ export const userRegistration = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const username = await generateRandomUsername();
     const { email, password } = req.body;
-    const _user = await User.findOne({ email });
-    if (!!_user) {
+    const user = await getUserByEmail(email);
+    if (user) {
       return res.status(400).json({ message: 'Email already exists' });
     }
+    const username = generateRandomUsername();
     const newUser = { email, username, password };
-    const createdUser = await User.create(newUser);
-    if (createdUser) {
-      res.status(201).json({ message: 'User registered successfully' });
+    const { createdUser, token } = await addUser(newUser);
+
+    if (!createdUser) {
+      // deepcode ignore JavascriptDeadCode: <please specify a reason of ignoring this>
+      return res
+        .status(500)
+        .json({ error: 'Something went wrong try again later!' });
     }
+    const maxAge = 60 * 60 * 24;
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      maxAge,
+      secure: true,
+    });
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
@@ -36,16 +50,17 @@ export const userRegistration = async (req, res) => {
 export const userLogin = async (req, res) => {
   try {
     const errors = validationResult(req);
+
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
-    console.log(user);
+    const user = await getUser(email);
+
     if (!user) {
-      return res.status(401).json({ message: 'Authentication failed' });
+      return res.status(401).json({ message: 'User not registered' });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -53,13 +68,19 @@ export const userLogin = async (req, res) => {
     if (!passwordMatch) {
       return res.status(401).json({ message: 'Email or Password is invalid' });
     }
+
     const _user = { ...user.toObject() };
     delete _user.password;
-    delete _user.updatedAt;
-    const userBase64 = user.username.concat(user.email).toString('base64');
-    const token = jwt.sign({ userBase64 }, jwtSecretKey, { expiresIn: '1D' });
 
-    res.json({ user: _user, token });
+    const token = generateJWT(user);
+
+    const maxAge = 60 * 60 * 24;
+
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      maxAge,
+    });
+    res.json({ user: _user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -67,7 +88,7 @@ export const userLogin = async (req, res) => {
 };
 
 // Forgot password
-export const userForgotPassword = (req, res) => {
+export const userForgotPassword = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -75,17 +96,17 @@ export const userForgotPassword = (req, res) => {
     }
 
     const { email } = req.body;
-    const user = User.find((user) => user.email === email);
-
+    const user = await getUserByEmail(email);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    const resetToken = generateJWT(user, '10m');
+    const updatedUser = await updateUserToken(email, resetToken);
 
-    const resetToken = jwt.sign({ email }, jwtSecretKey, { expiresIn: '1h' });
-    resetPasswordTokens.push(resetToken);
-
-    sendMail(email, resetToken);
-
+    if (!updatedUser) {
+      return res.status(500).json({ message: 'Unable to reset password' });
+    }
+    // sendMail(email, resetToken);
     res.json({ message: 'Password reset email sent' });
   } catch (error) {
     console.error(error);

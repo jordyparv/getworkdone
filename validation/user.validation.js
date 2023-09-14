@@ -1,5 +1,5 @@
 import { checkSchema } from 'express-validator';
-export const userRegistrationValidatationSchema = checkSchema({
+export const userRegistrationValidationSchema = checkSchema({
   password: {
     exists: { errorMessage: 'Password is required' },
     isString: { errorMessage: 'password should be string' },
@@ -18,4 +18,8 @@ export const userRegistrationValidatationSchema = checkSchema({
   },
 });
 
-// export const userLoginValidatationSchema = checkSchema({});
+export const userForgotPasswordValidationSchema = checkSchema({
+  email: {
+    isEmail: { errorMessage: 'Please provide valid email' },
+  },
+});

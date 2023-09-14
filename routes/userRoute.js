@@ -6,17 +6,20 @@ import {
   userResetPassword,
 } from '../controllers/userController.js';
 import { check } from 'express-validator';
-import { userRegistrationValidatationSchema } from '../validation/user.validation.js';
+import {
+  userRegistrationValidationSchema,
+  userForgotPasswordValidationSchema,
+} from '../validation/user.validation.js';
 
 const router = Router();
 
-router.post('/register', userRegistrationValidatationSchema, userRegistration);
+router.post('/register', userRegistrationValidationSchema, userRegistration);
 
-router.post('/login', userRegistrationValidatationSchema, userLogin);
+router.post('/login', userRegistrationValidationSchema, userLogin);
 
 router.post(
   '/forgot-password',
-  [check('email').isEmail().normalizeEmail()],
+  userForgotPasswordValidationSchema,
   userForgotPassword
 );
 router.post(

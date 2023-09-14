@@ -22,13 +22,19 @@ const userSchema = new mongoose.Schema({
     minlength: 5,
     select: false,
   },
+  resetToken: {
+    type: String,
+    select: false,
+  },
   createAt: {
     type: Date,
     default: Date.now,
   },
+
   updatedAt: {
     type: Date,
     default: Date.now,
+    select: false,
   },
 });
 
